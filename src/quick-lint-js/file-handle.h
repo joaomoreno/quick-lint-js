@@ -57,6 +57,7 @@ class windows_handle_file_ref {
   HANDLE get() noexcept;
 
   file_read_result read(void *buffer, int buffer_size) noexcept;
+  bool seek_to(std::size_t offset) noexcept;
   std::optional<int> write(const void *buffer, int buffer_size) noexcept;
 
   bool is_pipe_non_blocking();
@@ -84,6 +85,7 @@ class windows_handle_file : private windows_handle_file_ref {
   windows_handle_file &operator=(const windows_handle_file &) = delete;
 
   windows_handle_file(windows_handle_file &&) noexcept;
+  windows_handle_file &operator=(windows_handle_file &&) noexcept;
 
   ~windows_handle_file();
 
@@ -96,6 +98,7 @@ class windows_handle_file : private windows_handle_file_ref {
   using windows_handle_file_ref::get_pipe_buffer_size;
   using windows_handle_file_ref::is_pipe_non_blocking;
   using windows_handle_file_ref::read;
+  using windows_handle_file_ref::seek_to;
   using windows_handle_file_ref::set_pipe_non_blocking;
   using windows_handle_file_ref::valid;
   using windows_handle_file_ref::write;
@@ -116,6 +119,7 @@ class posix_fd_file_ref {
   int get() noexcept;
 
   file_read_result read(void *buffer, int buffer_size) noexcept;
+  bool seek_to(std::size_t offset) noexcept;
   std::optional<int> write(const void *buffer, int buffer_size) noexcept;
 
   bool is_pipe_non_blocking();
@@ -142,6 +146,7 @@ class posix_fd_file : private posix_fd_file_ref {
   posix_fd_file &operator=(const posix_fd_file &) = delete;
 
   posix_fd_file(posix_fd_file &&) noexcept;
+  posix_fd_file &operator=(posix_fd_file &&) noexcept;
 
   ~posix_fd_file();
 
@@ -154,7 +159,9 @@ class posix_fd_file : private posix_fd_file_ref {
   using posix_fd_file_ref::get_pipe_buffer_size;
   using posix_fd_file_ref::is_pipe_non_blocking;
   using posix_fd_file_ref::read;
+  using posix_fd_file_ref::seek_to;
   using posix_fd_file_ref::set_pipe_non_blocking;
+  using posix_fd_file_ref::valid;
   using posix_fd_file_ref::write;
 };
 #endif

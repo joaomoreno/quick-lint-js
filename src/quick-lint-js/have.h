@@ -321,6 +321,30 @@
 #define QLJS_HAVE_SETJMP 0
 #endif
 
+#if !defined(QLJS_HAVE_INOTIFY)
+#if defined(__linux__)
+#define QLJS_HAVE_INOTIFY 1
+#else
+#define QLJS_HAVE_INOTIFY 0
+#endif
+#endif
+
+#if !defined(QLJS_HAVE_KQUEUE)
+#if defined(__APPLE__)
+#define QLJS_HAVE_KQUEUE 1
+#else
+#define QLJS_HAVE_KQUEUE 0
+#endif
+#endif
+
+#if !defined(QLJS_HAVE_POLL)
+#if defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L
+#define QLJS_HAVE_POLL 1
+#else
+#define QLJS_HAVE_POLL 0
+#endif
+#endif
+
 #if !defined(QLJS_HAVE_STD_TRANSPARENT_KEYS)
 // TODO(strager): Set this to 1 if is_transparent is supported by
 // std::unordered_map::find (C++20).

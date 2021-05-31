@@ -132,6 +132,12 @@ std::size_t windows_handle_file_ref::get_pipe_buffer_size() {
   return outBufferSize;
 }
 
+bool windows_handle_file_ref::seek_to(std::size_t offset) noexcept {
+  QLJS_ASSERT(this->valid());
+  return ::SetFilePointer(this->handle_, narrow_cast<DWORD>(offset), nullptr,
+                          FILE_BEGIN) != INVALID_SET_FILE_POINTER;
+}
+
 std::string windows_handle_file_ref::get_last_error_message() {
   return windows_error_message(::GetLastError());
 }
@@ -142,6 +148,15 @@ windows_handle_file::windows_handle_file(HANDLE handle) noexcept
 windows_handle_file::windows_handle_file(windows_handle_file &&other) noexcept
     : windows_handle_file_ref(
           std::exchange(other.handle_, this->invalid_handle_1)) {}
+
+windows_handle_file &windows_handle_file::operator=(
+    windows_handle_file &&other) noexcept {
+  std::swap(this->handle_, other.handle_);
+  if (other.valid()) {
+    other.close();
+  }
+  return *this;
+}
 
 windows_handle_file::~windows_handle_file() {
   if (this->valid()) {
@@ -191,6 +206,12 @@ file_read_result posix_fd_file_ref::read(void *buffer,
       .bytes_read = narrow_cast<int>(read_size),
       .error_message = std::nullopt,
   };
+}
+
+bool posix_fd_file_ref::seek_to(std::size_t offset) noexcept {
+  QLJS_ASSERT(this->valid());
+  ::off_t rc = ::lseek(this->fd_, offset, SEEK_SET);
+  return rc != static_cast<::off_t>(-1);
 }
 
 std::optional<int> posix_fd_file_ref::write(const void *buffer,
@@ -251,10 +272,20 @@ std::string posix_fd_file_ref::get_last_error_message() {
   return std::strerror(errno);
 }
 
+posix_fd_file::posix_fd_file() noexcept : posix_fd_file_ref() {}
+
 posix_fd_file::posix_fd_file(int fd) noexcept : posix_fd_file_ref(fd) {}
 
 posix_fd_file::posix_fd_file(posix_fd_file &&other) noexcept
     : posix_fd_file_ref(std::exchange(other.fd_, this->invalid_fd)) {}
+
+posix_fd_file &posix_fd_file::operator=(posix_fd_file &&other) noexcept {
+  std::swap(this->fd_, other.fd_);
+  if (other.valid()) {
+    other.close();
+  }
+  return *this;
+}
 
 posix_fd_file::~posix_fd_file() {
   if (this->valid()) {
