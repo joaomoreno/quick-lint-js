@@ -40,6 +40,8 @@ quick_lint_js_add_library(
   char8.cpp
   cli-location.cpp
   configuration-change-detector-inotify.cpp
+  configuration-change-detector-kqueue.cpp
+  configuration-change-detector-win32.cpp
   configuration-change-detector.cpp
   configuration-loader.cpp
   configuration.cpp

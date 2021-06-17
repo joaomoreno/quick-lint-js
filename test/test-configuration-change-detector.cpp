@@ -380,6 +380,7 @@ TEST_F(test_configuration_change_detector,
   }
 }
 
+// @@@ needs port
 TEST_F(test_configuration_change_detector,
        creating_config_in_same_dir_as_many_watched_files_is_detected) {
   std::string project_dir = this->make_temporary_directory();

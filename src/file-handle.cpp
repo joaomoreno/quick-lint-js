@@ -210,7 +210,7 @@ file_read_result posix_fd_file_ref::read(void *buffer,
 
 bool posix_fd_file_ref::seek_to(std::size_t offset) noexcept {
   QLJS_ASSERT(this->valid());
-  ::off_t rc = ::lseek(this->fd_, offset, SEEK_SET);
+  ::off_t rc = ::lseek(this->fd_, narrow_cast<::off_t>(offset), SEEK_SET);
   return rc != static_cast<::off_t>(-1);
 }
 
