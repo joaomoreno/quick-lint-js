@@ -250,8 +250,8 @@ configuration_loader::get_loaded_config(const canonical_path& path) noexcept {
 
 std::vector<configuration_change> configuration_loader::refresh() {
   std::vector<configuration_change> changes;
+
   for (const std::string& input_path : this->watched_paths_) {
-    // @@@ dedupe
     canonical_path_result canonical_input_path =
         this->fs_->canonicalize_path(input_path);
     if (!canonical_input_path.ok()) {
@@ -272,50 +272,68 @@ std::vector<configuration_change> configuration_loader::refresh() {
         this->find_config_file_in_directory_and_ancestors(
             std::move(parent_directory), /*check_loaded=*/false);
 
-    // @@@ check for latest.error
-    if (latest.path.has_value()) {
-      loaded_config_file* already_loaded =
-          this->get_loaded_config(*latest.path);
-      if (already_loaded) {
-        bool did_change = latest.file_content != already_loaded->file_content;
-        if (did_change) {
-          already_loaded->file_content = std::move(latest.file_content);
-          already_loaded->config.reset();
-          already_loaded->config.set_config_file_path(std::move(*latest.path));
-          already_loaded->config.load_from_json(&already_loaded->file_content);
+    auto old_config_path_it = this->input_path_config_files_.find(input_path);
+    std::optional<canonical_path> old_config_path = old_config_path_it == this->input_path_config_files_.end()
+      ? std::nullopt
+      : std::optional(old_config_path_it->second);
 
-          changes.emplace_back(configuration_change{
-              .watched_path = &input_path,
-              .config = &already_loaded->config,
-          });
+    if (latest.path != old_config_path) {
+      configuration* config;
+      if (latest.path.has_value()) {
+        auto loaded_config_it = this->loaded_config_files_.find(*latest.path);
+        if (loaded_config_it == this->loaded_config_files_.end()) {
+          loaded_config_file& loaded_config = this->loaded_config_files_[*latest.path];
+          loaded_config.file_content = std::move(latest.file_content);
+          loaded_config.config.reset();
+          loaded_config.config.set_config_file_path(*latest.path);
+          loaded_config.config.load_from_json(&loaded_config.file_content);
+          // @@@ signal that the second loop shouldn't reload the file.
+          config = &loaded_config.config;
+        } else {
+          config = &loaded_config_it->second.config;
         }
       } else {
-        loaded_config_file* existing =
-            &this->loaded_config_files_[*latest.path];
-
-        existing->file_content = std::move(latest.file_content);
-        existing->config.reset();
-        existing->config.set_config_file_path(std::move(*latest.path));
-        existing->config.load_from_json(&existing->file_content);
-
-        changes.emplace_back(configuration_change{
-            .watched_path = &input_path,
-            .config = &existing->config,
-        });
+        config = &this->default_config_;
       }
-    } else {
-      auto old_config_file_it = this->input_path_config_files_.find(input_path);
-      if (old_config_file_it == this->input_path_config_files_.end()) {
-        // @@@
+      changes.emplace_back(configuration_change{
+          .watched_path = &input_path,
+          .config = config,
+          });
+      if (latest.path.has_value()) {
+        this->input_path_config_files_.insert_or_assign(input_path, *latest.path);
       } else {
-        // Config file was deleted.
-        changes.emplace_back(configuration_change{
-            .watched_path = &input_path,
-            .config = &this->default_config_,
-        });
+        this->input_path_config_files_.erase(input_path);
       }
     }
   }
+
+  for (auto &[config_path, loaded_config] : this->loaded_config_files_) {
+    // @@@ use previously read file contents (from previous loop)
+    read_file_result config_json = this->fs_->read_file(config_path);
+    if (!config_json.ok()) {
+      continue;
+      QLJS_UNIMPLEMENTED();
+    }
+
+    bool did_change = loaded_config.file_content != config_json.content;
+    if (did_change) {
+      loaded_config.file_content = std::move(config_json.content);
+      loaded_config.config.reset();
+      loaded_config.config.set_config_file_path(config_path);
+      loaded_config.config.load_from_json(&loaded_config.file_content);
+
+      for (auto& [input_path, input_config_path] : this->input_path_config_files_) {
+        if (input_config_path == config_path) {
+          // @@@ don't duplicate watches
+          changes.emplace_back(configuration_change{
+              .watched_path = &input_path,
+              .config = &loaded_config.config,
+          });
+        }
+      }
+    }
+  }
+
   return changes;
 }
 

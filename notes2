@@ -1,0 +1,13 @@
+@@@
+
+before      | after                      | changed?
+------------+----------------------------+------------
+no config   | no config                  | no
+no config   | config                     | yes
+config      | same config                | no
+config      | different config path      | yes
+config      | different config content   | yes
+config      | no config                  | yes
+
+* find changes to input->configpath mapping
+* find changes to configpath->config mapping

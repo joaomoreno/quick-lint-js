@@ -212,6 +212,10 @@ void configuration::set_config_file_path(canonical_path&& path) {
   this->config_file_path_ = std::move(path);
 }
 
+void configuration::set_config_file_path(const canonical_path& path) {
+  this->config_file_path_ = path;
+}
+
 void configuration::reset() {
   // TODO(strager): Make this more efficient by avoiding reallocations.
   this->globals_ = global_declared_variable_set();

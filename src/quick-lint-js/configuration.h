@@ -27,6 +27,7 @@ class configuration {
   void remove_global_variable(string8_view name);
 
   void load_from_json(padded_string_view);
+  void set_config_file_path(const canonical_path&);
   void set_config_file_path(canonical_path&&);
 
   void reset();

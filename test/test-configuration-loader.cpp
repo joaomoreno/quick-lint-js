@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #if QLJS_HAVE_STD_FILESYSTEM
@@ -1247,6 +1248,40 @@ TEST_F(test_configuration_loader,
   ASSERT_THAT(changes, ElementsAre(::testing::_));
   EXPECT_THAT(*changes[0].watched_path, ::testing::HasSubstr("test.js"));
   EXPECT_SAME_FILE(changes[0].config->config_file_path(), config_file);
+}
+
+TEST_F(test_configuration_loader,
+       creating_config_in_same_dir_as_many_watched_files_is_detected) {
+  std::string project_dir = this->make_temporary_directory();
+
+  std::unordered_set<std::string> js_files;
+  for (int i = 0; i < 10; ++i) {
+    std::string js_file = project_dir + "/hello" + std::to_string(i) + ".js";
+    write_file(js_file, u8"");
+    auto [_iterator, inserted] = js_files.insert(std::move(js_file));
+    ASSERT_TRUE(inserted) << "duplicate js_file: " << js_file;
+  }
+
+  configuration_loader loader(basic_configuration_filesystem::instance());
+  for (const std::string& js_file : js_files) {
+    loader.load_for_file(js_file);
+  }
+
+  std::string config_file = project_dir + "/quick-lint-js.config";
+  write_file(config_file, u8"{}");
+
+  std::vector<configuration_change> changes = loader.refresh();
+  std::unordered_set<std::string> unconfigured_js_files = js_files;
+  for (const configuration_change& change : changes) {
+    SCOPED_TRACE(*change.watched_path);
+    EXPECT_EQ(js_files.count(*change.watched_path), 1)
+        << "change should report a watched file";
+    EXPECT_EQ(unconfigured_js_files.erase(*change.watched_path), 1)
+        << "change should report no duplicate watched files";
+    EXPECT_SAME_FILE(change.config->config_file_path(), config_file);
+  }
+  EXPECT_THAT(unconfigured_js_files, IsEmpty())
+      << "all watched files should have a config";
 }
 
 TEST(test_configuration_loader_fake,
